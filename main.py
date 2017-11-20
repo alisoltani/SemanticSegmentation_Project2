@@ -55,21 +55,24 @@ def layers(vgg_layer3_out, vgg_layer4_out, vgg_layer7_out, num_classes):
     :param num_classes: Number of classes to classify
     :return: The Tensor for the last layer of output
     """
+    L2_REG = 1e-4
+    STDEV = 1e-3
+    
     # TODO: Implement function
     # 1x1 convolution of layer 7
-    vgg_layer7_out_resampled = tf.layers.conv2d(vgg_layer7_out, num_classes, 1, padding='same', kernel_initializer= tf.random_normal_initializer(stddev=0.01), kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))  
+    vgg_layer7_out_resampled = tf.layers.conv2d(vgg_layer7_out, num_classes, 1, padding='same', kernel_initializer= tf.random_normal_initializer(stddev=L2_REG), kernel_regularizer=tf.contrib.layers.l2_regularizer(STDEV))  
     # Upsample layer 7 and make layer 4 same size
-    vgg_layer7_out_upsampled = tf.layers.conv2d_transpose(vgg_layer7_out_resampled, num_classes, 4, 2, padding='same', kernel_initializer= tf.random_normal_initializer(stddev=0.01), kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3)) 
-    vgg_layer4_out_resampled = tf.layers.conv2d(vgg_layer4_out, num_classes, 1, padding='same', kernel_initializer= tf.random_normal_initializer(stddev=0.01), kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))  
+    vgg_layer7_out_upsampled = tf.layers.conv2d_transpose(vgg_layer7_out_resampled, num_classes, 4, 2, padding='same', kernel_initializer= tf.random_normal_initializer(stddev=L2_REG), kernel_regularizer=tf.contrib.layers.l2_regularizer(STDEV)) 
+    vgg_layer4_out_resampled = tf.layers.conv2d(vgg_layer4_out, num_classes, 1, padding='same', kernel_initializer= tf.random_normal_initializer(stddev=L2_REG), kernel_regularizer=tf.contrib.layers.l2_regularizer(STDEV))  
     # skip connection
     combined_layer = tf.add(vgg_layer7_out_upsampled, vgg_layer4_out_resampled)
     # Upsample this new layer and make layer 3 the same size as well
-    combined_layer_upsampled = tf.layers.conv2d_transpose(combined_layer, num_classes, 4, 2, padding='same', kernel_initializer= tf.random_normal_initializer(stddev=0.01), kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3)) 
-    vgg_layer3_out_resampled = tf.layers.conv2d(vgg_layer3_out, num_classes, 1, padding='same', kernel_initializer= tf.random_normal_initializer(stddev=0.01), kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3))  
+    combined_layer_upsampled = tf.layers.conv2d_transpose(combined_layer, num_classes, 4, 2, padding='same', kernel_initializer= tf.random_normal_initializer(stddev=L2_REG), kernel_regularizer=tf.contrib.layers.l2_regularizer(STDEV)) 
+    vgg_layer3_out_resampled = tf.layers.conv2d(vgg_layer3_out, num_classes, 1, padding='same', kernel_initializer= tf.random_normal_initializer(stddev=L2_REG), kernel_regularizer=tf.contrib.layers.l2_regularizer(STDEV))  
     # skip connection
     combined_layer_new = tf.add(combined_layer_upsampled, vgg_layer3_out_resampled)
     # Final output layer upsampled
-    output = tf.layers.conv2d_transpose(combined_layer_new, num_classes, 16, 8, padding='same', kernel_initializer= tf.random_normal_initializer(stddev=0.01), kernel_regularizer=tf.contrib.layers.l2_regularizer(1e-3)) 
+    output = tf.layers.conv2d_transpose(combined_layer_new, num_classes, 16, 8, padding='same', kernel_initializer= tf.random_normal_initializer(stddev=L2_REG), kernel_regularizer=tf.contrib.layers.l2_regularizer(STDEV)) 
     # Print sizes
     tf.Print(output, [tf.shape(output)])
     return output
@@ -123,7 +126,7 @@ def train_nn(sess, epochs, batch_size, get_batches_fn, train_op, cross_entropy_l
         for image, label in get_batches_fn(batch_size):
             # Training
             _, loss = sess.run([train_op, cross_entropy_loss],
-                               feed_dict={input_image: image, correct_label: label, keep_prob: 0.5, learning_rate: 0.001})
+                               feed_dict={input_image: image, correct_label: label, keep_prob: 0.5, learning_rate: 0.0001})
             print("Loss: = {:.3f}".format(loss))
             
        # if (epoch + 1) % 30 == 0: # Save every 20 epochs
@@ -156,8 +159,8 @@ def run():
         #  https://datascience.stackexchange.com/questions/5224/how-to-prepare-augment-images-for-neural-network
 
         # TODO: Build NN using load_vgg, layers, and optimize function     
-        epochs = 50
-        batch_size = 5
+        epochs = 30
+        batch_size = 32
         
         correct_label = tf.placeholder(tf.int32, [None, None, None, num_classes], name='correct_label')
         learning_rate = tf.placeholder(tf.float32, name='learning_rate')
